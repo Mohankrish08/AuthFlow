@@ -1,36 +1,29 @@
 # importing libraries
+import os
 from fastapi import FastAPI, HTTPException, Depends
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
+from supabase import create_client, Client
+from dotenv import load_dotenv
+
+# load the env
+load_dotenv()
 
 # Initailizing FastAPI app
 app = FastAPI(title="Integration with FastAPI")
 
 
 # Database setup
-engine = create_engine("sqlite:///users.db", connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autoflush=False, autocommit=False, bind=engine)
-Base = declarative_base()
-
-# Database Models
-class User(Base):
-    __tablename__ = "Users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    email = Column(String(125), nullable=False, unique=True)
-    role = Column(String(100), nullable=False)
-
-Base.metadata.create_all(bind=engine)
+url = os.getenv('sample_login_proj_url')
+key = os.getenv('sample_login_publisher_api_key')
 
 # Pydantic Schemas
 class UserCreate(BaseModel):
     name: str
     email:str
     role: str
+    created_at: Optional[datetime] = None
 
 class UserResponse(BaseModel):
     id: int
@@ -43,12 +36,8 @@ class UserResponse(BaseModel):
 
 
 # Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_db() -> Client:
+    return create_client(url, key)
     
 
     
@@ -61,52 +50,65 @@ def read_root():
 
 # Get the User
 @app.get("/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+def get_user(user_id: int, db: Client = Depends(get_db)):
+    response = (
+        db.table("sample_login")
+        .select("id, name, email, role")
+        .eq("id", user_id)
+        .execute()
+    )
 
-# Create User
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return response.data[0]
+
+# Get all the users
+@app.get("/users/", response_model=List[UserResponse])
+def get_all_users(db: Client = Depends(get_db)):
+    response = (db.table("sample_login")
+                .select("*")
+                .execute())
+    return response.data
+
+
+# # Create User
 @app.post("/users/", response_model=UserResponse)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == user.email).first():
+def create_user(user: UserCreate, db: Client = Depends(get_db)):
+    existing = (db.table("sample_login").select('email').eq('email', user.email).execute())
+    if existing.data:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    new_user = User(**user.dict())
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    data = user.dict()
+    data['created_at'] = data['created_at'].isoformat()
+    print(f"user details: {data}")
+    new_user = (db.table("sample_login").insert(data).execute())
+    return new_user.data[0]
 
 # Update User
 @app.put("/users/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.id == user_id).first()
-    print(db_user.name)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+def update_user(user_id: int, user: UserCreate, db: Client = Depends(get_db)):
+    existing = (db.table("sample_login").select("email", "id").eq("email", user.email).execute())
+    if existing.data:
+        print("Existing data: ", existing.data)
+        data = user.dict()
+        data['created_at'] = data['created_at'].isoformat()
+        print(f"data: {data}")
+        update = (db.table("sample_login")
+                  .update(data)
+                  .eq("id" , user_id)
+                  .execute())
+        return update.data[0]
     
-    for field, value in user.dict():
-        print("Field: ", field)
-        print("Value: ", value)
-        setattr(db_user, field, value)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    raise HTTPException(status_code=400, detail="No Matching Record Found")
 
 # Delete User
 @app.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User doesn't exists")
-    db.delete(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return {"message": "User Delete successfully"}
+def delete_user(user_id: int, db: Client = Depends(get_db)):
+    delete = (db.table("sample_login").delete().eq("id", user_id).execute()) 
+    print("Delete: ", delete)
+    if delete:       
+        return delete.data
+    
+    raise HTTPException(status_code=404, detail="User not Found")
 
-@app.get("/users/", response_model=List[UserResponse])
-def get_all_users(db: Session = Depends(get_db)):
-    db_user = db.query(User).all()
-    return db_user
