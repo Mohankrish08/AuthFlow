@@ -1,14 +1,24 @@
 from supabase import Client
+from passlib.context import CryptContext
 from app.models.user import UserCreate
+
+
+def password_hasing():
+    return CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    pass_hash = password_hasing()
+    return pass_hash.hash(password)
 
 def get_user_by_id(db: Client, user_id: int):
     response = (
         db.table("sample_login")
-        .select("id, name, email, role")
+        .select("id, name, email, role", "username")
         .eq("id", user_id)
         .execute()
     )
     return response.data
+
 
 def get_all_users(db: Client):
     return db.table("sample_login").select("*").execute().data
@@ -19,11 +29,14 @@ def create_user(db: Client, user: UserCreate):
         return None
 
     data = user.dict()
+    data['password'] = get_password_hash(user.password)
     if data.get("created_at"):
         data["created_at"] = data["created_at"].isoformat()
 
     new_user = db.table("sample_login").insert(data).execute()
-    return new_user.data[0]
+    if new_user:
+        return new_user[0]
+    return None
 
 def update_user(db: Client, user_id: int, user: UserCreate):
     data = user.dict()
