@@ -16,7 +16,7 @@ from app.models.user import UserResponse
 router = APIRouter(prefix="/auth", tags=["Authorization"])
 
 
-@router.get("/token", response_model=Token)
+@router.post("/token", response_model=Token)
 async def login_from_access_token(formData: OAuth2PasswordRequestForm  = Depends(),
                                   db:Client = Depends(get_db)):
     user = authenticate_user(db, formData.username, formData.password)
@@ -27,7 +27,7 @@ async def login_from_access_token(formData: OAuth2PasswordRequestForm  = Depends
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect user and password")
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     access_token = create_access_token(
         data={"sub": user['username']},
         expires_delta=access_token_expires

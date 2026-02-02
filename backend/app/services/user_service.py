@@ -21,7 +21,8 @@ def get_user_by_id(db: Client, user_id: int):
 
 
 def get_all_users(db: Client):
-    return db.table("sample_login").select("*").execute().data
+    data = db.table("sample_login").select("*").execute().data
+    return data
 
 def create_user(db: Client, user: UserCreate):
     existing = db.table("sample_login").select('email').eq('email', user.email).execute()
@@ -35,7 +36,7 @@ def create_user(db: Client, user: UserCreate):
 
     new_user = db.table("sample_login").insert(data).execute()
     if new_user:
-        return new_user[0]
+        return new_user.data[0]
     return None
 
 def update_user(db: Client, user_id: int, user: UserCreate):

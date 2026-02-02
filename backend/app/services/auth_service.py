@@ -39,18 +39,28 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     return encoded_jwt
 
 def decode_access_token(token: str) -> TokenData:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
 
+        username: str = payload.get("sub")
+        
         if username is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Validate the credentials", 
-                            headers={"www.Authenticate": "Bearer"},)
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Validate the credentials", 
-                            headers={"www.Authenticate": "Bearer"},)
+            raise credentials_exception
+        
+        token_data = TokenData(username=username)
+        return token_data
+    
+    except JWTError as e:
+        raise credentials_exception
+    
+    except Exception as e:
+        raise credentials_exception
     
 def get_user_by_username(db: Client, username:str):
     response = (
@@ -72,13 +82,26 @@ def authenticate_user(db: Client, username: str, password: str):
     return user
 
 async def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        db: Client = Depends(lambda: __import__('app.core.dbHandler', fromlist=['get_db']).get_db())
-        ):
+    token: str = Depends(oauth2_scheme),
+    db: Client = Depends(get_db)
+):
+    
     token_data = decode_access_token(token)
+    
+    if token_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user = get_user_by_username(db, token_data.username)
-
+    
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Validate the credentials", 
-                            headers={"www.Authenticate": "Bearer"},)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return user
