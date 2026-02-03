@@ -1,6 +1,6 @@
 from supabase import Client
 from passlib.context import CryptContext
-from app.models.user import UserCreate
+from app.models import UserCreate
 
 
 def password_hasing():

@@ -5,8 +5,8 @@ import os
 from supabase import Client
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
-from app.core.dbHandler import get_db
-from app.models.auth import TokenData
+from app.core import get_db
+from app.models import TokenData
 
 # JWT config
 SECRET_KEY = os.getenv('SECRET_KEY')

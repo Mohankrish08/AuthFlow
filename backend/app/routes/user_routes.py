@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from supabase import Client
 
-from app.core.dbHandler import get_db
+from app.core import get_db
 from app.models import UserCreate, UserResponse
 from app.services import user_service
-from app.services.auth_service import get_current_user
+from app.services import get_current_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

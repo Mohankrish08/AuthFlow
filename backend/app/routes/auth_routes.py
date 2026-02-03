@@ -3,15 +3,15 @@ from fastapi.security import OAuth2PasswordRequestForm
 from supabase import Client
 from datetime import timedelta
 
-from app.core.dbHandler import get_db
-from app.services.auth_service import (
+from app.core import get_db
+from app.services import (
     authenticate_user,
     create_access_token,
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from app.models.auth import Token
-from app.models.user import UserResponse
+from app.models import Token
+from app.models import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authorization"])
 
