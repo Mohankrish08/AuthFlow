@@ -17,6 +17,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES')
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
+# Refresh tokens
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', 7))
+REFRESH_SECRET_KEY = os.getenv("REFRESH_TOKEN")
+
 # helper methods
 
 
@@ -36,6 +40,18 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
  
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def create_refresh_token(data: dict, expires_delta: timedelta = None) -> str:
+    to_encode = data.copy()
+    
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 def decode_access_token(token: str) -> TokenData:
@@ -61,6 +77,30 @@ def decode_access_token(token: str) -> TokenData:
     
     except Exception as e:
         raise credentials_exception
+    
+def decode_refresh_token(token: str) -> TokenData:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        
+        if payload.get("type") != "refresh":
+            raise credentials_exception
+        
+        username: str = payload.get("sub")
+        
+        if username is None:
+            raise credentials_exception
+        
+        return TokenData(username=username)
+    
+    except JWTError:
+        raise credentials_exception
+    
     
 def get_user_by_username(db: Client, username:str):
     response = (
