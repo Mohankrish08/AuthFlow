@@ -6,7 +6,7 @@ A simple and secure login system built using:
 - Python (FastAPI)
 - React
 - JWT for authentication
-- CSRF protection for security
+- CSRF protection for security.
 
 ### Features
 - User registration & login
@@ -14,3 +14,4 @@ A simple and secure login system built using:
 - Refresh token flow
 - CSRF protection
 - Secure password hashing
+
