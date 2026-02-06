@@ -13,5 +13,5 @@ A simple and secure login system built using:
 - JWT-based access tokens
 - Refresh token flow
 - CSRF protection
-- Secure password hashing
+- Secure password hashing.
 
