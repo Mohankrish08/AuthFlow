@@ -10,8 +10,8 @@ A simple and secure login system built using:
 
 ### Features
 - User registration & login
-- JWT-based access tokens
-- Refresh token flow
-- CSRF protection
+- JWT-based access tokens.
+- Refresh token flow.
+- CSRF protection.
 - Secure password hashing.
 
