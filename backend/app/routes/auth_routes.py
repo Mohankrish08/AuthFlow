@@ -4,7 +4,7 @@ from supabase import Client
 from datetime import timedelta
 import os
 
-from app.core import get_db
+from app.core import get_db, generate_csrf_token, create_csrf_token_response
 from app.services import (
     authenticate_user,
     create_access_token,
@@ -40,7 +40,16 @@ async def login_from_access_token(formData: OAuth2PasswordRequestForm  = Depends
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_refresh_token(data={"sub": user['username']}, expires_delta=refresh_token_expires)
     
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    csrf_token = generate_csrf_token()
+
+    response_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "csrf_token": csrf_token,
+        "token_type": "bearer"
+    }
+
+    return create_csrf_token_response(response_data, csrf_token)
 
 
 @router.post("/refresh", response_model=Token)
@@ -58,8 +67,24 @@ async def refresh_token(refresh_request: RefreshTokenRequest, db: Client = Depen
 
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_refresh_token(data={"sub": user['username']}, expires_delta=refresh_token_expires)
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+    csrf_token = generate_csrf_token()
+
+    response_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "csrf_token": csrf_token,
+        "token_type": "bearer"
+    }
+
+    return create_csrf_token_response(response_data, csrf_token)
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+@router.post("/csrf-verify")
+async def get_csrf_token():
+    csrf_token = generate_csrf_token()
+    response_data = {"csrf_token": csrf_token}
+    return create_csrf_token_response(response_data, csrf_token)
