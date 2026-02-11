@@ -3,8 +3,8 @@
 ## Full-Stack Authentication System using JWT and CSRF (Python + React)
 
 A simple and secure login system built using:
-- Python (FastAPI)
-- React
+- Python (FastAPI).
+- React.
 - JWT for authentication
 - CSRF protection for security.
 
